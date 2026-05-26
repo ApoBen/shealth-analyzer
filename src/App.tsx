@@ -59,6 +59,61 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleExportData = () => {
+    try {
+      const dataStr = JSON.stringify(reports, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      const exportFileDefaultName = `shealth_data_backup_${new Date().toISOString().slice(0,10)}.json`;
+      
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+    } catch (e) {
+      alert("Veriler dışa aktarılırken hata oluştu: " + e);
+    }
+  };
+
+  const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    fileReader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target?.result as string);
+        if (!Array.isArray(parsed)) {
+          throw new Error("Yedek dosyası bir dizi içermelidir.");
+        }
+        
+        // Format dates
+        const formatted = parsed.map((r: any) => ({
+          ...r,
+          date: new Date(r.date)
+        }));
+
+        // Merge and avoid duplicates by dateStr
+        const merged = [...reports];
+        let importedCount = 0;
+        formatted.forEach((newR: HealthReportData) => {
+          if (!merged.some(oldR => oldR.dateStr === newR.dateStr)) {
+            merged.push(newR);
+            importedCount++;
+          }
+        });
+
+        saveReports(merged);
+        setActiveTab('dashboard');
+        alert(`${importedCount} adet yeni rapor başarıyla içe aktarıldı.`);
+      } catch (err: any) {
+        alert("JSON dosyası okunamadı veya geçersiz format: " + err.message);
+      }
+    };
+    fileReader.readAsText(file, "UTF-8");
+    // Reset input
+    event.target.value = '';
+  };
+
   const loadSampleData = () => {
     const sample: HealthReportData[] = [
       {
@@ -283,14 +338,39 @@ export const App: React.FC = () => {
         </nav>
         <div className="header-actions">
           {reports.length > 0 ? (
-            <button className="btn btn-danger btn-sm" onClick={handleClearData}>
-              Verileri Sıfırla
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button className="btn btn-secondary btn-sm" onClick={handleExportData}>
+                Yedekle (JSON)
+              </button>
+              <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
+                Yedekten Yükle
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  style={{ display: 'none' }} 
+                  onChange={handleImportData} 
+                />
+              </label>
+              <button className="btn btn-danger btn-sm" onClick={handleClearData}>
+                Verileri Sıfırla
+              </button>
+            </div>
           ) : (
-            <button className="btn btn-secondary btn-sm" onClick={loadSampleData}>
-              <Database className="size-4 mr-2" />
-              Örnek Raporları Yükle
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
+                Yedekten Yükle
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  style={{ display: 'none' }} 
+                  onChange={handleImportData} 
+                />
+              </label>
+              <button className="btn btn-secondary btn-sm" onClick={loadSampleData}>
+                <Database className="size-4 mr-2" />
+                Örnek Raporları Yükle
+              </button>
+            </div>
           )}
         </div>
       </header>

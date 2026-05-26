@@ -745,3 +745,54 @@
   color: var(--teal);
   font-size: 0.8rem;
 }
+
+/* New Advanced Dashboard additions */
+.dashboard-tabs {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.anomaly-item {
+  transition: all 0.25s ease;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.anomaly-item:hover {
+  transform: translateX(4px);
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.flex {
+  display: flex;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.animate-spin-hover:hover {
+  animation: spin 1.5s linear infinite;
+}
+
+select {
+  transition: all 0.2s ease;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--teal) !important;
+  box-shadow: var(--shadow-glow);
+}
