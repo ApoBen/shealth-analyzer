@@ -107,6 +107,18 @@ export interface HealthReportData {
   }>;
 }
 
+// Helper to parse floats that may have spaces, commas, or dots as decimals (e.g. "105 0" or "8,08" or "971.6")
+function parseFlexibleFloat(valStr: string | undefined): number | undefined {
+  if (!valStr) return undefined;
+  const cleaned = valStr.trim();
+  // Match standard digits optionally followed by a separator (dot, comma, space) and fraction digits
+  const match = cleaned.match(/^(\d+)(?:[\s.,]+(\d+))?/);
+  if (!match) return undefined;
+  const whole = match[1];
+  const fraction = match[2] || '0';
+  return parseFloat(`${whole}.${fraction}`);
+}
+
 export async function parseHealthReportPdf(file: File): Promise<HealthReportData> {
   const arrayBuffer = await file.arrayBuffer();
   const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
@@ -129,11 +141,10 @@ function parseExtractedText(text: string, fileName: string): HealthReportData {
   let date = new Date();
   let dateStr = '';
   
-  // E.g., "Rapor Tarihi: 26 Mayıs 2026"
-  const dateMatch = text.match(/Rapor Tarihi:\s*([^\n]+)/i);
+  // Support Turkish character issues (e.g. "Rapor Tar h : 26 Mayıs 2026")
+  const dateMatch = text.match(/Rapor\s+Tar\s*h\s*:\s*([^\n]+)/i);
   if (dateMatch) {
     dateStr = dateMatch[1].trim();
-    // Parse Turkish month names to English or parse directly
     date = parseTurkishDate(dateStr);
   } else {
     // Try filename, e.g. "HealthReport_2026_05_26.pdf"
@@ -145,123 +156,97 @@ function parseExtractedText(text: string, fileName: string): HealthReportData {
     }
   }
 
-  // E.g., "Kullanıcı: can | Doğum Tarihi: 1995-10-10 | Cinsiyet: Erkek | Boy: 180 cm | Kilo: 75 kg"
+  // Profile data
   const nicknameMatch = text.match(/Kullanıcı:\s*([^\s|]+)/i);
-  const birthDateMatch = text.match(/Doğum Tarihi:\s*([^\s|]+)/i);
-  const genderMatch = text.match(/Cinsiyet:\s*([^\s|]+)/i);
-  const heightMatch = text.match(/Boy:\s*([\d.,]+)\s*cm/i);
-  const weightMatch = text.match(/Kilo:\s*([\d.,]+)\s*kg/i);
+  const birthDateMatch = text.match(/Doğum\s+Tar\s*h\s*:\s*([^\s|]+)/i);
+  const genderMatch = text.match(/C\s*ns\s*yet:\s*([^\s|]+)/i);
+  const heightMatch = text.match(/Boy:\s*([\d\s.,]+)\s*cm/i);
+  const weightMatch = text.match(/K\s*lo:\s*([\d\s.,]+)\s*kg/i);
 
-  // 1. Aktivite & Adımlar
-  // • Toplam Adım: 12500 / Hedef: 6000
-  // • Yürünen Mesafe: 8.75 km
-  // • Çıkılan Kat: 12 kat / Hedef: 10 kat
-  const totalStepsMatch = text.match(/Toplam Adım:\s*(\d+)\s*\/\s*Hedef:\s*(\d+)/i);
-  const distanceMatch = text.match(/Yürünen Mesafe:\s*([\d.,]+)\s*km/i);
-  const floorsMatch = text.match(/Çıkılan Kat:\s*(\d+)\s*kat\s*\/\s*Hedef:\s*(\d+)\s*kat/i);
+  // 1. Aktivite & Adımlar (e.g. "Toplam Adım: 11211 / Hedef: 6000")
+  const totalStepsMatch = text.match(/Toplam\s+Adım:\s*(\d+)\s*\/\s*Hedef:\s*(\d+)/i);
+  const distanceMatch = text.match(/Yürünen\s+Mesafe:\s*([\d\s.,]+)\s*km/i);
+  const floorsMatch = text.match(/Çıkılan\s+Kat:\s*(\d+)\s*kat\s*\/\s*Hedef:\s*(\d+)\s*kat/i);
 
-  // 2. Kalp Sağlığı
-  // • Ortalama Nabız: 75 bpm
-  // • Nabız Aralığı: 60 - 145 bpm
-  // • Dinlenme Nabzı: 62 bpm
-  const avgHrMatch = text.match(/Ortalama Nabız:\s*(\d+)\s*bpm/i);
-  const hrRangeMatch = text.match(/Nabız Aralığı:\s*(\d+)\s*-\s*(\d+)\s*bpm/i);
-  const restingHrMatch = text.match(/Dinlenme Nabzı:\s*(\d+)\s*bpm/i);
+  // 2. Kalp Sağlığı (Nabız)
+  const avgHrMatch = text.match(/Ortalama\s+Nabız:\s*(\d+)\s*bpm/i);
+  const hrRangeMatch = text.match(/Nabız\s+Aralığı:\s*(\d+)\s*-\s*(\d+)\s*bpm/i);
+  const restingHrMatch = text.match(/D\s*nlenme\s+Nabzı:\s*(\d+)\s*bpm/i);
 
   // 3. Enerji Skoru & Kalori Dengesi
-  // • Günlük Enerji Skoru: 85 / 100
-  // • Toplam Yakılan Kalori: 2450.5 kcal
-  // • Aktif Kalori: 650.0 kcal | Dinlenme Kalorisi: 1800.5 kcal
-  const energyScoreMatch = text.match(/Günlük Enerji Skoru:\s*(\d+)\s*\/\s*100/i);
-  const totalCalMatch = text.match(/Toplam Yakılan Kalori:\s*([\d.,]+)\s*kcal/i);
-  const caloriesBreakdownMatch = text.match(/Aktif Kalori:\s*([\d.,]+)\s*kcal\s*\|\s*Dinlenme Kalorisi:\s*([\d.,]+)\s*kcal/i);
+  const energyScoreMatch = text.match(/Enerj\s*Skoru:\s*(\d+)\s*\/\s*100/i) || text.match(/Günlük\s+Enerj\s*Skoru:\s*(\d+)/i);
+  const totalCalMatch = text.match(/Toplam\s+Yakılan\s+Kalor\s*:\s*([\d\s.,]+)\s*kcal/i);
+  const caloriesBreakdownMatch = text.match(/Akt\s*f\s+Kalor\s*:\s*([\d\s.,]+)\s*kcal\s*\|\s*D\s*nlenme\s+Kalor\s*s\s*:\s*([\d\s.,]+)\s*kcal/i);
 
   // 4. Uyku Analizi
-  // • Toplam Uyku Süresi: 7 saat 30 dakika (Uyku Skoru: 82/100)
-  // • Yatma Zamanı: 23:30 | Uyanma Zamanı: 07:00
-  //   - REM Uyku: 90 dk
-  //   - Hafif Uyku: 240 dk
-  //   - Derin Uyku: 60 dk
-  //   - Uyanık Süre: 15 dk
-  const sleepDurationMatch = text.match(/Toplam Uyku Süresi:\s*(\d+)\s*saat\s*(\d+)\s*dakika/i);
-  const sleepScoreMatch = text.match(/Uyku Skoru:\s*(\d+)\/100/i);
-  const sleepTimesMatch = text.match(/Yatma Zamanı:\s*(\d{2}:\d{2})\s*\|\s*Uyanma Zamanı:\s*(\d{2}:\d{2})/i);
-  const remMatch = text.match(/REM Uyku:\s*(\d+)\s*dk/i);
-  const lightMatch = text.match(/Hafif Uyku:\s*(\d+)\s*dk/i);
-  const deepMatch = text.match(/Derin Uyku:\s*(\d+)\s*dk/i);
-  const awakeMatch = text.match(/Uyanık Süre:\s*(\d+)\s*dk/i);
+  const sleepDurationMatch = text.match(/Toplam\s+Uyku\s+Süres\s*:\s*(\d+)\s*saat\s*(\d+)\s*dak\s*ka/i);
+  const sleepScoreMatch = text.match(/Uyku\s+Skoru:\s*(\d+)\/100/i);
+  // Match times that might have spaces instead of colons (e.g. "23 09" or "07 50")
+  const sleepTimesMatch = text.match(/Yatma\s+Zamanı:\s*(\d{2})[\s:]+(\d{2})\s*\|\s*Uyanma\s+Zamanı:\s*(\d{2})[\s:]+(\d{2})/i);
+  const remMatch = text.match(/REM\s+Uyku:\s*(\d+)\s*dk/i);
+  const lightMatch = text.match(/Haf\s*f\s+Uyku:\s*(\d+)\s*dk/i);
+  const deepMatch = text.match(/Der\s*n\s+Uyku:\s*(\d+)\s*dk/i);
+  const awakeMatch = text.match(/Uyanık\s+Süre:\s*(\d+)\s*dk/i);
 
   // 5. Sıvı Tüketimi
-  // • Alınan Su: 1500 ml / Hedef: 2000 ml
-  // or Alınan Su: 1500 ml / Hedef: 2000 ml
-  const waterMatch = text.match(/Alınan Su:\s*([\d.,]+)\s*ml\s*\/\s*Hedef:\s*([\d.,]+)\s*ml/i);
+  const waterMatch = text.match(/Alınan\s+Su:\s*([\d\s.,]+)\s*ml\s*\/\s*Hedef:\s*([\d\s.,]+)\s*ml/i);
 
   // 6. Vücut Analizi
-  // • Ağırlık: 75.5 kg
-  // • Boy: 180 cm
-  // • Vücut Yağ Oranı: % 18.5
-  // • İskelet Kas Kütlesi: 34.2 kg
-  // • Vücut Kitle Endeksi (BMI): 23.8
-  const weightKgMatch = text.match(/• Ağırlık:\s*([\d.,]+)\s*kg/i);
-  const heightCmMatch = text.match(/• Boy:\s*([\d.,]+)\s*cm/i);
-  const bodyFatMatch = text.match(/Vücut Yağ Oranı:\s*%\s*([\d.,]+)/i);
-  const skeletalMuscleMatch = text.match(/İskelet Kas Kütlesi:\s*([\d.,]+)\s*kg/i);
-  const bmiMatch = text.match(/Vücut Kitle Endeksi \(BMI\):\s*([\d.,]+)/i);
+  const bodyWeightMatch = text.match(/•\s*Ağırlık:\s*([\d\s.,]+)\s*kg/i);
+  const bodyHeightMatch = text.match(/•\s*Boy:\s*([\d\s.,]+)\s*cm/i);
+  const bodyFatMatch = text.match(/Vücut\s+Yağ\s+Oranı:\s*%\s*([\d\s.,]+)/i);
+  const skeletalMuscleMatch = text.match(/İskelet\s+Kas\s+Kütles\s*:\s*([\d\s.,]+)\s*kg/i);
+  const bmiMatch = text.match(/Vücut\s+K\s*tle\s+Endeks\s*\(BMI\):\s*([\d\s.,]+)/i);
 
   // 7. Beslenme
-  // • Tüketilen Toplam Enerji: 2150.0 kcal
-  // • Makro Besin Kırılımı: Karbonhidrat: 250.0g | Protein: 120.0g | Yağ: 70.0g
-  // • Diyet Lifi: 25.0g
-  const nutritionCalMatch = text.match(/Tüketilen Toplam Enerji:\s*([\d.,]+)\s*kcal/i);
-  const nutritionMacrosMatch = text.match(/Karbonhidrat:\s*([\d.,]+)g\s*\|\s*Protein:\s*([\d.,]+)g\s*\|\s*Yağ:\s*([\d.,]+)g/i);
-  const nutritionFiberMatch = text.match(/Diyet Lifi:\s*([\d.,]+)g/i);
+  const nutritionCalMatch = text.match(/Tüketilen\s+Toplam\s+Enerji:\s*([\d\s.,]+)\s*kcal/i) || text.match(/Tüket len\s+Toplam\s+Enerj\s*:\s*([\d\s.,]+)\s*kcal/i);
+  const nutritionMacrosMatch = text.match(/Karbonhidrat:\s*([\d\s.,]+)g\s*\|\s*Protein:\s*([\d\s.,]+)g\s*\|\s*Yağ:\s*([\d\s.,]+)g/i);
+  const nutritionFiberMatch = text.match(/Diyet\s+Lifi:\s*([\d\s.,]+)g/i) || text.match(/D yet\s+L f :\s*([\d\s.,]+)g/i);
 
-  // 8. Tıbbi Ölçümler (Tansiyon, SpO2, Kan Şekeri, Cilt Sıcaklığı, Uyku Apnesi)
+  // 8. Tıbbi Ölçümler (Tansiyon, SpO2, Kan Şekeri)
   const bloodPressure: HealthReportData['bloodPressure'] = [];
-  const bpRegex = /(\d{2}:\d{2})\s*->\s*Sistolik:\s*(\d+)\s*\|\s*Diastolik:\s*(\d+)(?:\s*\(Nabız:\s*(\d+)\))?/gi;
+  // Supports space instead of colon in time (e.g., "12 30 -> Sistolik: 120 | Diastolik: 80")
+  const bpRegex = /(\d{2})[\s:]+(\d{2})\s*->\s*Sistolik:\s*(\d+)\s*\|\s*Diastolik:\s*(\d+)(?:\s*\(Nabız:\s*(\d+)\))?/gi;
   let bpMatch;
   while ((bpMatch = bpRegex.exec(text)) !== null) {
     bloodPressure.push({
-      time: bpMatch[1],
-      systolic: parseInt(bpMatch[2]),
-      diastolic: parseInt(bpMatch[3]),
-      pulse: bpMatch[4] ? parseInt(bpMatch[4]) : undefined
+      time: `${bpMatch[1]}:${bpMatch[2]}`,
+      systolic: parseInt(bpMatch[3]),
+      diastolic: parseInt(bpMatch[4]),
+      pulse: bpMatch[5] ? parseInt(bpMatch[5]) : undefined
     });
   }
 
   const bloodOxygen: HealthReportData['bloodOxygen'] = [];
-  const oxygenRegex = /(\d{2}:\d{2})\s*->\s*%\s*(\d+)/gi;
+  // e.g. "- 23 09 -> % 95"
+  const oxygenRegex = /(\d{2})[\s:]+(\d{2})\s*->\s*%\s*(\d+)/gi;
   let oxMatch;
   while ((oxMatch = oxygenRegex.exec(text)) !== null) {
     bloodOxygen.push({
-      time: oxMatch[1],
-      spo2: parseInt(oxMatch[2])
+      time: `${oxMatch[1]}:${oxMatch[2]}`,
+      spo2: parseInt(oxMatch[3])
     });
   }
 
   const bloodGlucose: HealthReportData['bloodGlucose'] = [];
-  // - 12:30 -> 110 mg/dL (Tokluk)
-  const glucoseRegex = /(\d{2}:\d{2})\s*->\s*(\d+)\s*mg\/dL(?:\s*\(([^\)]+)\))?/gi;
+  const glucoseRegex = /(\d{2})[\s:]+(\d{2})\s*->\s*(\d+)\s*mg\/dL(?:\s*\(([^\)]+)\))?/gi;
   let glucMatch;
   while ((glucMatch = glucoseRegex.exec(text)) !== null) {
     bloodGlucose.push({
-      time: glucMatch[1],
-      glucose: parseInt(glucMatch[2]),
-      mealType: glucMatch[3] ? glucMatch[3].trim() : undefined
+      time: `${glucMatch[1]}:${glucMatch[2]}`,
+      glucose: parseInt(glucMatch[3]),
+      mealType: glucMatch[4] ? glucMatch[4].trim() : undefined
     });
   }
 
-  const skinTempMatch = text.match(/Ortalama Cilt Sıcaklığı:\s*([\d.,]+)\s*°C/i);
-  const apneaMatch = text.match(/Uyku Apnesi Analizi:\s*([^\n]+)/i);
+  const skinTempMatch = text.match(/Ortalama\s+Cilt\s+Sıcaklığı:\s*([\d\s.,]+)\s*°C/i) || text.match(/Ortalama\s+C lt\s+Sıcaklığı:\s*([\d\s.,]+)\s*°C/i);
+  const apneaMatch = text.match(/Uyku\s+Apnesi\s+Analizi:\s*([^\n]+)/i) || text.match(/Uyku\s+Apnes\s+Anal z :\s*([^\n]+)/i);
 
-  // 9. Egzersizler
+  // 9. Egzersizler (Workout: 57 dk - 645,9 kcal | Mesafe: 4,65 km)
   const workouts: HealthReportData['workouts'] = [];
-  // • Koşu: 30 dk - 350.0 kcal | Mesafe: 5.00 km
-  // or • Bisiklet: 45 dk - 250 kcal
-  const workoutRegex = /•\s*([^:\n]+):\s*(\d+)\s*dk\s*-\s*([\d.,]+)\s*kcal(?:\s*\|\s*Mesafe:\s*([\d.,]+)\s*km)?/gi;
+  const workoutRegex = /•\s*([^:\n]+):\s*(\d+)\s*dk\s*-\s*([\d\s.,]+)\s*kcal(?:\s*\|\s*Mesafe:\s*([\d\s.,]+)\s*km)?/gi;
   let workMatch;
   while ((workMatch = workoutRegex.exec(text)) !== null) {
-    // Prevent matching sections that might look like this (like steps)
     const type = workMatch[1].trim();
     if (type.toLowerCase().includes("toplam") || type.toLowerCase().includes("alınan") || type.toLowerCase().includes("ortalama")) {
       continue;
@@ -269,8 +254,8 @@ function parseExtractedText(text: string, fileName: string): HealthReportData {
     workouts.push({
       type: type,
       durationMinutes: parseInt(workMatch[2]),
-      caloriesBurned: parseFloat(workMatch[3].replace(',', '.')),
-      distanceKm: workMatch[4] ? parseFloat(workMatch[4].replace(',', '.')) : undefined
+      caloriesBurned: parseFlexibleFloat(workMatch[3]) || 0,
+      distanceKm: workMatch[4] ? parseFlexibleFloat(workMatch[4]) : undefined
     });
   }
 
@@ -282,12 +267,12 @@ function parseExtractedText(text: string, fileName: string): HealthReportData {
     nickname: nicknameMatch?.[1],
     birthDate: birthDateMatch?.[1],
     gender: genderMatch?.[1],
-    heightCm: heightMatch ? parseFloat(heightMatch[1].replace(',', '.')) : undefined,
-    weightKg: weightMatch ? parseFloat(weightMatch[1].replace(',', '.')) : undefined,
+    heightCm: parseFlexibleFloat(heightMatch?.[1]),
+    weightKg: parseFlexibleFloat(weightMatch?.[1]),
     steps: totalStepsMatch ? {
       totalSteps: parseInt(totalStepsMatch[1]),
       goalSteps: parseInt(totalStepsMatch[2]),
-      distanceKm: distanceMatch ? parseFloat(distanceMatch[1].replace(',', '.')) : 0
+      distanceKm: parseFlexibleFloat(distanceMatch?.[1]) || 0
     } : undefined,
     floors: floorsMatch ? {
       floorsClimbed: parseInt(floorsMatch[1]),
@@ -301,42 +286,42 @@ function parseExtractedText(text: string, fileName: string): HealthReportData {
     } : undefined,
     energyScore: energyScoreMatch ? parseInt(energyScoreMatch[1]) : undefined,
     calories: totalCalMatch ? {
-      totalCalories: parseFloat(totalCalMatch[1].replace(',', '.')),
-      activeCalories: caloriesBreakdownMatch ? parseFloat(caloriesBreakdownMatch[1].replace(',', '.')) : 0,
-      restCalories: caloriesBreakdownMatch ? parseFloat(caloriesBreakdownMatch[2].replace(',', '.')) : 0
+      totalCalories: parseFlexibleFloat(totalCalMatch[1]) || 0,
+      activeCalories: caloriesBreakdownMatch ? parseFlexibleFloat(caloriesBreakdownMatch[1]) || 0 : 0,
+      restCalories: caloriesBreakdownMatch ? parseFlexibleFloat(caloriesBreakdownMatch[2]) || 0 : 0
     } : undefined,
     sleep: sleepDurationMatch ? {
       totalDurationMinutes: parseInt(sleepDurationMatch[1]) * 60 + parseInt(sleepDurationMatch[2]),
       sleepScore: sleepScoreMatch ? parseInt(sleepScoreMatch[1]) : undefined,
-      startTime: sleepTimesMatch?.[1],
-      endTime: sleepTimesMatch?.[2],
+      startTime: sleepTimesMatch ? `${sleepTimesMatch[1]}:${sleepTimesMatch[2]}` : undefined,
+      endTime: sleepTimesMatch ? `${sleepTimesMatch[3]}:${sleepTimesMatch[4]}` : undefined,
       remMinutes: remMatch ? parseInt(remMatch[1]) : 0,
       lightSleepMinutes: lightMatch ? parseInt(lightMatch[1]) : 0,
       deepSleepMinutes: deepMatch ? parseInt(deepMatch[1]) : 0,
       awakeMinutes: awakeMatch ? parseInt(awakeMatch[1]) : 0
     } : undefined,
     waterIntake: waterMatch ? {
-      amountMl: parseFloat(waterMatch[1].replace(',', '.')),
-      goalMl: parseFloat(waterMatch[2].replace(',', '.'))
+      amountMl: parseFlexibleFloat(waterMatch[1]) || 0,
+      goalMl: parseFlexibleFloat(waterMatch[2]) || 2000
     } : undefined,
-    bodyComposition: weightKgMatch ? {
-      weightKg: parseFloat(weightKgMatch[1].replace(',', '.')),
-      heightCm: heightCmMatch ? parseFloat(heightCmMatch[1].replace(',', '.')) : undefined,
-      bodyFatPercentage: bodyFatMatch ? parseFloat(bodyFatMatch[1].replace(',', '.')) : undefined,
-      skeletalMuscleMassKg: skeletalMuscleMatch ? parseFloat(skeletalMuscleMatch[1].replace(',', '.')) : undefined,
-      bmi: bmiMatch ? parseFloat(bmiMatch[1].replace(',', '.')) : undefined
+    bodyComposition: bodyWeightMatch ? {
+      weightKg: parseFlexibleFloat(bodyWeightMatch[1]) || 0,
+      heightCm: bodyHeightMatch ? parseFlexibleFloat(bodyHeightMatch[1]) : undefined,
+      bodyFatPercentage: bodyFatMatch ? parseFlexibleFloat(bodyFatMatch[1]) : undefined,
+      skeletalMuscleMassKg: skeletalMuscleMatch ? parseFlexibleFloat(skeletalMuscleMatch[1]) : undefined,
+      bmi: bmiMatch ? parseFlexibleFloat(bmiMatch[1]) : undefined
     } : undefined,
     nutrition: nutritionCalMatch ? {
-      calories: parseFloat(nutritionCalMatch[1].replace(',', '.')),
-      carbsGrams: nutritionMacrosMatch ? parseFloat(nutritionMacrosMatch[1].replace(',', '.')) : 0,
-      proteinGrams: nutritionMacrosMatch ? parseFloat(nutritionMacrosMatch[2].replace(',', '.')) : 0,
-      fatGrams: nutritionMacrosMatch ? parseFloat(nutritionMacrosMatch[3].replace(',', '.')) : 0,
-      fiberGrams: nutritionFiberMatch ? parseFloat(nutritionFiberMatch[1].replace(',', '.')) : undefined
+      calories: parseFlexibleFloat(nutritionCalMatch[1]) || 0,
+      carbsGrams: nutritionMacrosMatch ? parseFlexibleFloat(nutritionMacrosMatch[1]) || 0 : 0,
+      proteinGrams: nutritionMacrosMatch ? parseFlexibleFloat(nutritionMacrosMatch[2]) || 0 : 0,
+      fatGrams: nutritionMacrosMatch ? parseFlexibleFloat(nutritionMacrosMatch[3]) || 0 : 0,
+      fiberGrams: nutritionFiberMatch ? parseFlexibleFloat(nutritionFiberMatch[1]) : undefined
     } : undefined,
     bloodPressure,
     bloodOxygen,
     bloodGlucose,
-    skinTemperatureAvg: skinTempMatch ? parseFloat(skinTempMatch[1].replace(',', '.')) : undefined,
+    skinTemperatureAvg: skinTempMatch ? parseFlexibleFloat(skinTempMatch[1]) : undefined,
     sleepApneaSeverity: apneaMatch ? apneaMatch[1].trim() : undefined,
     workouts
   };
@@ -348,7 +333,6 @@ function parseTurkishDate(dateStr: string): Date {
     'temmuz': 6, 'ağustos': 7, 'eylül': 8, 'ekim': 9, 'kasım': 10, 'aralık': 11
   };
   
-  // Format E.g.: "26 Mayıs 2026"
   const parts = dateStr.toLowerCase().split(/\s+/);
   if (parts.length === 3) {
     const day = parseInt(parts[0]);

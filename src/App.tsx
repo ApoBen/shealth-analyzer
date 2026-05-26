@@ -406,6 +406,21 @@ export const App: React.FC = () => {
                   <span><strong>Trend Analizi:</strong> Birden fazla günlük PDF yükleyerek haftalık/aylık gelişim grafiklerinizi çıkarabilirsiniz.</span>
                 </div>
               </div>
+              
+              <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.25rem' }}>
+                <p style={{ marginBottom: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Samsung Health verilerinizi okuyup bu PDF raporlarını üreten mobil uygulamamızı cihazınıza yükleyin:
+                </p>
+                <a 
+                  href={`${import.meta.env.BASE_URL || '/'}shealt-app.apk`} 
+                  download="S-Health_Report_Generator.apk"
+                  className="btn btn-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center' }}
+                >
+                  <Activity className="size-4 mr-2" />
+                  Android Uygulamasını İndir (APK)
+                </a>
+              </div>
             </div>
             
             <FileUploader onReportsParsed={handleReportsParsed} />
