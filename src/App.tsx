@@ -13,6 +13,7 @@ export const App: React.FC = () => {
   const [reports, setReports] = useState<HealthReportData[]>([]);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'upload'>('upload');
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
 
   // Load from local storage on mount
   useEffect(() => {
@@ -47,7 +48,12 @@ export const App: React.FC = () => {
 
     const merged = [...reports, ...filteredNew];
     saveReports(merged);
-    setActiveTab('dashboard');
+    
+    setIsAnalyzing(true);
+    setTimeout(() => {
+      setIsAnalyzing(false);
+      setActiveTab('dashboard');
+    }, 1500); // 1.5 second loading animation
   };
 
   const handleClearData = () => {
@@ -377,7 +383,22 @@ export const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="app-content">
-        {selectedReportId && selectedReport ? (
+        {isAnalyzing ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+            <div className="samsung-spinner" style={{
+              width: '60px', 
+              height: '60px',
+              border: '4px solid rgba(11, 211, 160, 0.2)',
+              borderTop: '4px solid var(--teal)',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              marginBottom: '1.5rem',
+              boxShadow: 'var(--shadow-glow)'
+            }} />
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>Veriler Analiz Ediliyor...</h2>
+            <p style={{ color: 'var(--text-muted)' }}>Yapay zeka modelleri sağlık verilerinizi yorumluyor.</p>
+          </div>
+        ) : selectedReportId && selectedReport ? (
           <ReportDetail 
             report={selectedReport} 
             onBack={() => setSelectedReportId(null)} 

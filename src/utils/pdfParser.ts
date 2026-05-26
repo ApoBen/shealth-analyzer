@@ -1,7 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set local public worker source path dynamically based on base URL
-pdfjsLib.GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL || '/'}pdf.worker.min.mjs`;
+// Set local public worker source path dynamically using Vite's ?url import
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 export interface HealthReportData {
   id: string;
@@ -133,7 +134,10 @@ export async function parseHealthReportPdf(file: File): Promise<HealthReportData
     fullText += `--- Sayfa ${i} ---\n` + pageText + '\n';
   }
   
-  return parseExtractedText(fullText, file.name);
+  // Replace null bytes (\x00) with spaces to fix regex failures caused by pdfjs-dist output
+  const sanitizedText = fullText.replace(/\0/g, ' ');
+  
+  return parseExtractedText(sanitizedText, file.name);
 }
 
 function parseExtractedText(text: string, fileName: string): HealthReportData {

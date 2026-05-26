@@ -7,9 +7,9 @@
 
 /* Header */
 .app-header {
-  background: rgba(13, 11, 20, 0.75);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: none;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -43,8 +43,8 @@
   background: transparent;
   border: none;
   color: var(--text-muted);
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+  padding: 0.5rem 1.2rem;
+  border-radius: var(--radius-btn);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -77,8 +77,8 @@
 /* Banner Component */
 .welcome-banner {
   margin-bottom: 2rem;
-  background: linear-gradient(135deg, rgba(30, 26, 47, 0.8) 0%, rgba(20, 17, 32, 0.9) 100%);
-  border-left: 4px solid var(--teal);
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
 }
 
 .welcome-banner h2 {
@@ -118,11 +118,11 @@
 }
 
 .drop-zone {
-  border: 2px dashed rgba(255, 255, 255, 0.15);
-  border-radius: 16px;
-  padding: 3.5rem 2rem;
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-card);
+  padding: 4rem 2rem;
   text-align: center;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
@@ -335,10 +335,10 @@
 .profile-summary {
   display: inline-flex;
   align-items: center;
-  padding: 0.4rem 0.85rem;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-btn);
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
   font-size: 0.85rem;
   color: var(--text-muted);
 }
@@ -496,10 +496,11 @@
 
 .bmi-badge {
   background: var(--teal-gradient);
-  color: #0d0b14;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
+  color: #000;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-btn);
   font-size: 0.85rem;
+  font-weight: 600;
 }
 
 /* Medical Data card and details */
@@ -526,10 +527,10 @@
 }
 
 .medical-item {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 12px;
-  padding: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
 }
 
 .item-header {
@@ -672,17 +673,17 @@
 
 .btn-group {
   display: flex;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  border-radius: var(--radius-btn);
   overflow: hidden;
-  padding: 2px;
+  padding: 4px;
 }
 
 .btn-group .btn {
-  padding: 0.4rem 0.85rem;
-  font-size: 0.8rem;
-  border-radius: 6px;
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  border-radius: var(--radius-btn);
   background: transparent;
   color: var(--text-muted);
   border: none;
@@ -696,17 +697,17 @@
 }
 
 .btn-group .btn.active {
-  background: var(--teal-gradient);
-  color: #0b0a10;
+  background: var(--bg-main);
+  color: var(--teal);
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(0, 242, 254, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 /* Insights Card */
 .insights-card {
-  border-left: 4px solid var(--teal);
+  border-left: none;
   margin-bottom: 2rem;
-  background: linear-gradient(135deg, rgba(30, 26, 47, 0.4) 0%, rgba(20, 17, 32, 0.5) 100%);
+  background: var(--bg-card);
 }
 
 .insights-header {
@@ -749,9 +750,9 @@
 /* New Advanced Dashboard additions */
 .dashboard-tabs {
   background: var(--bg-card);
-  border: 1px solid var(--border-card);
+  border: none;
   backdrop-filter: blur(12px);
-  border-radius: 12px;
+  border-radius: var(--radius-btn);
   padding: 0.75rem 1rem;
   margin-bottom: 1.5rem;
 }

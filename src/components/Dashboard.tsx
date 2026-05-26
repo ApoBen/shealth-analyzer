@@ -11,7 +11,9 @@ import {
   Legend,
   ArcElement,
   Filler,
-  ScatterController
+  ScatterController,
+  BarController,
+  LineController
 } from 'chart.js';
 import { Line, Chart } from 'react-chartjs-2';
 import type { HealthReportData } from '../utils/pdfParser';
@@ -29,6 +31,8 @@ ChartJS.register(
   BarElement,
   ArcElement,
   ScatterController,
+  BarController,
+  LineController,
   Title,
   Tooltip,
   Legend,
